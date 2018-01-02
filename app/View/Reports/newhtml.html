@@ -1,0 +1,85 @@
+
+<!-- Target Planned Delivery-->
+
+SELECT c.unit_id,
+c.currency,
+round(SUM(delivery_value*billing_percent_progressive*0.01),2)as delivery_value
+FROM deliveries as d,contracts as c
+WHERE c.id=d.contract_id
+AND d.payment_cheque_collection_progressive BETWEEN '2014-01-01' AND '2021-01-01'
+GROUP BY c.unit_id,c.currency
+ORDER BY c.unit_id,c.currency
+
+<!-- Target Planned From Advance and Retention-->
+SELECT currency,SUM(invoice_amount) as invoice_amount,unitid FROM collections 
+WHERE planned_payment_certificate_or_cheque_collection_date BETWEEN '2014-01-01' AND '2021-01-01'
+AND collection_type NOT LIKE 'Progressive'
+GROUP BY unitid,currency
+
+<!-- Target Planned From Advance and Retention-->
+SELECT unitid,currency,SUM(amount_received+ait+vat+ld+other_deduction) as collection FROM collections 
+WHERE planned_payment_credited_to_bank BETWEEN '2014-01-01' AND '2021-01-01' and planned_payment_credited_to_bank is not null
+GROUP BY unitid,currency
+
+
+
+<!-- Carry Delivery Amount -->
+SELECT (SELECT name FROM units WHERE units.id=c.unit_id)as unit,
+c.currency,
+round(SUM(delivery_value*billing_percent_progressive*0.01),2)as delivery_value
+FROM deliveries as d,contracts as c
+WHERE c.id=d.contract_id
+AND d.payment_cheque_collection_progressive BETWEEN '2014-01-01' AND '2021-01-01'
+GROUP BY c.unit_id,c.currency
+
+
+
+        
+        
+        
+        
+        
+        
+        
+        #delivery within time range
+         $sql=" SELECT SUM(quantity*unit_price) AS delivery,unitid,currency FROM deliveries
+                          WHERE payment_cheque_collection_progressive BETWEEN '".$this->request->data['Report']['date_from']."' AND '".$this->request->data['Report']['date_to']."' and actual_delivery_date NOT LIKE '0000-00-00'
+                          GROUP BY unitid,currency,product_id
+                    ";  
+                    $results=$this->Report->query($sql);
+                    foreach ($results as $result)
+                    {
+                        $data_delivery[$result['deliveries']['unitid']][$result['deliveries']['currency']]+=$result[0]['delivery'];
+                    }
+                    #delivery before time range
+           $sql=" SELECT SUM(quantity*unit_price) AS delivery,unitid,currency FROM deliveries
+                          WHERE payment_cheque_collection_progressive < '".$this->request->data['Report']['date_from']."' AND actual_delivery_date NOT LIKE '0000-00-00'
+                          GROUP BY unitid,currency,product_id
+                    ";  
+                    $results=$this->Report->query($sql);
+                    foreach ($results as $result)
+                    {
+                        $data_carry[$result['deliveries']['unitid']][$result['deliveries']['currency']]+=$result[0]['delivery'];
+                    } 
+                    
+              #Collection within time range
+              $sql="SELECT SUM(amount_received+ait+ld+vat+other_deduction) as payment,unitid,currency  FROM collections
+                      WHERE planned_payment_certificate_or_cheque_collection_date BETWEEN '".$this->request->data['Report']['date_from']."' AND '".$this->request->data['Report']['date_to']."'
+                          GROUP BY unitid,currency";  
+              $results=$this->Report->query($sql);
+                    foreach ($results as $result)
+                    {
+                        $payment_delivery[$result['collections']['unitid']][$result['collections']['currency']]+=$result[0]['payment'];
+                    } 
+              #Collection before time range
+              $sql="SELECT SUM(amount_received+ait+ld+vat+other_deduction) as payment,unitid,currency  FROM collections
+                      WHERE planned_payment_certificate_or_cheque_collection_date < '".$this->request->data['Report']['date_from']."'
+                          GROUP BY unitid,currency";  
+              $results=$this->Report->query($sql);
+                    foreach ($results as $result)
+                    {
+                        $payment_carry[$result['collections']['unitid']][$result['collections']['currency']]+=$result[0]['payment'];
+                    }    
+                    
+                 
+
